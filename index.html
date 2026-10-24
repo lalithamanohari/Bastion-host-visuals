@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bastion-host · SSH key authentication between two EC2 instances · #Buildwithvinit</title>
+<meta name="description" content="Interactive 9-step story: SSH key-based authentication from a Bastion Host to a private EC2 instance in AWS us-east-1.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<a class="skip" href="#diagram">Skip to diagram</a>
+<div class="app">
+<aside class="side" aria-label="Learning steps">
+  <header>
+    <h1>bastion-host</h1>
+    <p>SSH keys between two EC2 instances, told as a story. <b>#Buildwithvinit</b></p>
+  </header>
+  <div class="ctrl" role="group" aria-label="Controls">
+    <button id="play" type="button" aria-pressed="false">▶ Auto-play</button>
+    <button id="reset" type="button">Reset</button>
+    <button id="theme" type="button" aria-label="Toggle dark and light mode">☀ Light</button>
+  </div>
+  <nav><ol id="steps" class="steps"></ol></nav>
+  <section class="legend" aria-label="Moving-object legend">
+    <h2>Moving objects</h2>
+    <ul id="legend"></ul>
+  </section>
+</aside>
+
+<main class="main">
+  <figure class="diagram" id="diagram">
+  <svg id="svg" viewBox="0 0 1100 620" role="img" aria-labelledby="svg-t svg-d" xmlns="http://www.w3.org/2000/svg">
+    <title id="svg-t">AWS VPC with a Bastion Host and a private EC2 instance</title>
+    <desc id="svg-d">EC2 A in a public subnet connects over SSH on port 22 to EC2 B in a private subnet, inside a VPC in us-east-1.</desc>
+
+    <!-- zones -->
+    <rect class="zone blue" x="10" y="10" width="1080" height="600" rx="18"/>
+    <rect class="zone teal" x="30" y="50" width="1040" height="540" rx="14"/>
+    <rect class="zone gold" x="60" y="100" width="400" height="440" rx="12"/>
+    <rect class="zone purple" x="640" y="100" width="400" height="440" rx="12"/>
+    <text class="lbl blue" x="30" y="36" font-size="15">AWS Cloud · Region us-east-1 (N. Virginia)</text>
+    <text class="lbl teal" x="50" y="76" font-size="14">VPC 10.0.0.0/16</text>
+    <text class="lbl gold" x="80" y="128" font-size="14">Public Subnet 10.0.1.0/24 · Reception</text>
+    <text class="lbl purple" x="660" y="128" font-size="14">Private Subnet 10.0.2.0/24 · Server room</text>
+
+    <!-- connection paths first -->
+    <path id="p-main" class="path green" data-s="2 3 8 9" d="M400,280 Q550,170 700,280"/>
+    <path id="p-copy" class="path gold" data-s="6 7" d="M400,350 Q550,440 700,350"/>
+    <path id="p-block" class="path red" data-s="7 9" d="M600,488 L690,400"/>
+    <path id="p-ok" class="path none" d="M730,172 L830,172"/>
+
+    <!-- servers -->
+    <g class="ec2">
+      <rect class="box" x="110" y="190" width="290" height="200" rx="10"/>
+      <text class="t" x="125" y="212" font-size="14" font-weight="800">EC2 A · Bastion Host</text>
+      <rect class="term" x="125" y="223" width="260" height="127" rx="6"/>
+      <text id="termA" class="mono" x="135" y="241"></text>
+      <text class="s" data-s="3 4 5 6 8" x="125" y="372" font-size="10.5"><tspan class="gold">● id_ed25519 (private)</tspan><tspan class="teal" dx="12">● .pub</tspan></text>
+    </g>
+    <g class="ec2">
+      <rect class="box" x="700" y="190" width="290" height="200" rx="10"/>
+      <text class="t" x="715" y="212" font-size="14" font-weight="800">EC2 B · Private Target</text>
+      <rect class="term" x="715" y="223" width="260" height="127" rx="6"/>
+      <text id="termB" class="mono" x="725" y="241"></text>
+      <text class="s teal" data-s="6 8 9" x="715" y="372" font-size="10.5">● authorized_keys holds A's .pub</text>
+    </g>
+    <text class="t" x="255" y="415" font-size="12.5" text-anchor="middle">Amazon Linux 2023 · user ec2-user</text>
+    <text class="m" x="255" y="433" font-size="11.5" text-anchor="middle">Private IP 10.0.1.10 + public IP</text>
+    <text class="t" x="845" y="415" font-size="12.5" text-anchor="middle">Amazon Linux 2023 · user ec2-user</text>
+    <text class="m" x="845" y="433" font-size="11.5" text-anchor="middle">Private IP 10.0.2.25 only</text>
+
+    <!-- path labels -->
+    <text class="s green" data-s="2 8 9" x="550" y="205" font-size="13" font-weight="800" text-anchor="middle">SSH · TCP port 22</text>
+    <text class="s gold" data-s="6" x="550" y="425" font-size="12" text-anchor="middle">public key only</text>
+    <text class="s gold" data-s="7" x="550" y="425" font-size="12" text-anchor="middle">SG rule: A → B :22</text>
+
+    <!-- security groups -->
+    <g class="s" data-s="7">
+      <path class="guard" d="M392,176 l9,4 v8 q0,8 -9,12 q-9,-4 -9,-12 v-8z"/>
+      <text class="t" x="376" y="190" font-size="11" text-anchor="end">Guard A: outbound OK</text>
+      <path class="guard" d="M708,176 l9,4 v8 q0,8 -9,12 q-9,-4 -9,-12 v-8z"/>
+      <text class="t" x="724" y="190" font-size="11">Guard B: TCP 22 from SG-A</text>
+      <text class="green" x="700" y="470" font-size="12">✓ Inbound TCP 22 ← SG of A</text>
+      <text class="red" x="700" y="490" font-size="12">✗ Never 0.0.0.0/0 on 22</text>
+    </g>
+    <g class="s" data-s="7 9">
+      <rect class="box" x="500" y="470" width="100" height="36" rx="8"/>
+      <text class="t" x="550" y="493" font-size="12.5" text-anchor="middle">Internet</text>
+      <text class="red" x="550" y="530" font-size="11.5" text-anchor="middle">Blocked: not in SG-B</text>
+    </g>
+
+    <!-- moving objects last -->
+    <g class="mov" data-s="2 8" data-icon="env"><animateMotion dur="3.5s" repeatCount="indefinite" begin="indefinite"><mpath href="#p-main"/></animateMotion></g>
+    <g class="mov" data-s="8" data-icon="key"><animateMotion dur="4.5s" repeatCount="indefinite" begin="indefinite"><mpath href="#p-main"/></animateMotion></g>
+    <g class="mov" data-s="8 9" data-icon="lock"><animateMotion dur="5.5s" repeatCount="indefinite" begin="indefinite"><mpath href="#p-main"/></animateMotion></g>
+    <g class="mov" data-s="6" data-icon="key"><animateMotion dur="4s" repeatCount="indefinite" begin="indefinite"><mpath href="#p-copy"/></animateMotion></g>
+    <g class="mov" data-s="7" data-icon="shield"><animateMotion dur="4s" repeatCount="indefinite" begin="indefinite"><mpath href="#p-copy"/></animateMotion></g>
+    <g class="mov" data-s="8 9" data-icon="check"><animateMotion dur="2.5s" repeatCount="indefinite" begin="indefinite"><mpath href="#p-ok"/></animateMotion></g>
+    <g class="mov" data-s="7 9" data-icon="cross"><animateMotion dur="3s" repeatCount="indefinite" begin="indefinite"><mpath href="#p-block"/></animateMotion></g>
+  </svg>
+  </figure>
+
+  <section class="card" id="caption" aria-live="polite">
+    <div><h2 id="c-title"></h2></div>
+    <div><h3>In plain words</h3><p id="c-plain"></p></div>
+    <div><h3>Technical explanation</h3><p id="c-tech"></p></div>
+    <div><h3>Watch the animation</h3><p id="c-watch"></p></div>
+  </section>
+
+  <section class="card cmds" aria-labelledby="cmd-h">
+    <h2 id="cmd-h">Commands and what they do</h2>
+    <div id="cmds"></div>
+  </section>
+  <footer class="foot">#Buildwithvinit · Educational demo. Never share or copy a private key.</footer>
+</main>
+</div>
+<script src="js/app.js"></script>
+</body>
+</html>
